@@ -1,0 +1,1840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DevOps Command Center — Executive Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,300&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0b0f1a;
+    --surface: #111827;
+    --surface2: #1a2236;
+    --border: #1f2d45;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #7c3aed;
+    --accent4: #10b981;
+    --accent5: #f59e0b;
+    --danger: #ef4444;
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --text-soft: #94a3b8;
+    --glow: rgba(0, 212, 255, 0.15);
+    --glow2: rgba(255, 107, 53, 0.15);
+    --font-mono: 'Space Mono', monospace;
+    --font-body: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Header */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(11,15,26,0.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo-mark {
+    width: 32px; height: 32px;
+    border: 2px solid var(--accent);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 700;
+    box-shadow: 0 0 12px var(--glow);
+  }
+
+  .header h1 {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  .header-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .live-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--accent4);
+    font-family: var(--font-mono);
+    letter-spacing: 0.05em;
+  }
+
+  .live-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent4);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .filter-pill {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px;
+    color: var(--text-soft);
+    font-family: var(--font-mono);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .filter-pill.active {
+    background: rgba(0,212,255,0.1);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Nav tabs */
+  .nav-tabs {
+    display: flex;
+    padding: 0 28px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    gap: 0;
+    position: sticky;
+    top: 60px;
+    z-index: 99;
+  }
+
+  .nav-tab {
+    padding: 12px 20px;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  .nav-tab:hover { color: var(--text); }
+
+  .nav-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* Main layout */
+  .main {
+    position: relative;
+    z-index: 1;
+    padding: 24px 28px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* KPI row */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .kpi-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px var(--glow);
+  }
+
+  .kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--card-color, var(--accent));
+  }
+
+  .kpi-label {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+    margin-bottom: 8px;
+  }
+
+  .kpi-value {
+    font-family: var(--font-mono);
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .kpi-delta {
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .delta-up { color: var(--accent4); }
+  .delta-down { color: var(--danger); }
+  .delta-neutral { color: var(--text-muted); }
+
+  /* Grid layouts */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; margin-bottom: 16px; }
+  .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-1-1-1-1 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 16px; }
+
+  /* Chart cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    position: relative;
+    transition: border-color 0.2s;
+  }
+
+  .card:hover { border-color: rgba(0,212,255,0.3); }
+
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .card-title {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.05em;
+  }
+
+  .card-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 3px;
+    font-weight: 300;
+  }
+
+  .card-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  .badge-blue { background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.2); }
+  .badge-orange { background: rgba(255,107,53,0.1); color: var(--accent2); border: 1px solid rgba(255,107,53,0.2); }
+  .badge-green { background: rgba(16,185,129,0.1); color: var(--accent4); border: 1px solid rgba(16,185,129,0.2); }
+  .badge-red { background: rgba(239,68,68,0.1); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); }
+  .badge-purple { background: rgba(124,58,237,0.1); color: var(--accent3); border: 1px solid rgba(124,58,237,0.2); }
+
+  .chart-container {
+    position: relative;
+    width: 100%;
+  }
+
+  /* Data table */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .data-table th {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    font-weight: 700;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .data-table td {
+    padding: 9px 12px;
+    border-bottom: 1px solid rgba(31,45,69,0.5);
+    color: var(--text-soft);
+    font-size: 12px;
+    vertical-align: middle;
+  }
+
+  .data-table tr:hover td { background: rgba(0,212,255,0.03); color: var(--text); }
+  .data-table tr:last-child td { border-bottom: none; }
+
+  /* Status chips */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: var(--font-mono);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .chip-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+  .chip-success { background: rgba(16,185,129,0.1); color: var(--accent4); }
+  .chip-success .chip-dot { background: var(--accent4); }
+  .chip-warning { background: rgba(245,158,11,0.1); color: var(--accent5); }
+  .chip-warning .chip-dot { background: var(--accent5); }
+  .chip-danger { background: rgba(239,68,68,0.1); color: var(--danger); }
+  .chip-danger .chip-dot { background: var(--danger); }
+  .chip-info { background: rgba(0,212,255,0.1); color: var(--accent); }
+  .chip-info .chip-dot { background: var(--accent); }
+  .chip-purple { background: rgba(124,58,237,0.1); color: var(--accent3); }
+  .chip-purple .chip-dot { background: var(--accent3); }
+
+  /* Meter/progress bars */
+  .meter-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .meter-label {
+    font-size: 11px;
+    color: var(--text-soft);
+    width: 100px;
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+  }
+
+  .meter-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .meter-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.8s ease;
+  }
+
+  .meter-value {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    width: 36px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* Relationship diagram */
+  .rel-diagram {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 0;
+    padding: 12px 0;
+    overflow-x: auto;
+  }
+
+  .rel-table {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    min-width: 150px;
+    font-size: 11px;
+  }
+
+  .rel-table-header {
+    background: var(--accent3);
+    border-radius: 7px 7px 0 0;
+    padding: 7px 12px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 0.05em;
+  }
+
+  .rel-table-header.fact { background: var(--accent2); }
+  .rel-table-header.dim { background: var(--accent3); }
+  .rel-table-header.survey { background: var(--accent); color: var(--bg); }
+
+  .rel-table-col {
+    padding: 5px 12px;
+    border-top: 1px solid var(--border);
+    color: var(--text-soft);
+    font-size: 10px;
+    font-family: var(--font-mono);
+  }
+
+  .rel-table-col.key {
+    color: var(--accent5);
+  }
+
+  .rel-table-col.fk {
+    color: var(--accent4);
+  }
+
+  /* Heatmap */
+  .heatmap-grid {
+    display: grid;
+    gap: 3px;
+  }
+
+  .heatmap-cell {
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: white;
+    font-weight: 700;
+  }
+
+  /* Timeline */
+  .timeline-item {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 14px;
+    align-items: flex-start;
+  }
+
+  .timeline-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    margin-top: 4px;
+    flex-shrink: 0;
+    box-shadow: 0 0 8px currentColor;
+  }
+
+  .timeline-line {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .timeline-connector {
+    width: 1px;
+    flex: 1;
+    background: var(--border);
+    margin-top: 4px;
+  }
+
+  .timeline-content {
+    flex: 1;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(31,45,69,0.5);
+  }
+
+  .timeline-title {
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 500;
+    margin-bottom: 2px;
+  }
+
+  .timeline-meta {
+    font-size: 10px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* Scatter-like deployment-incident view */
+  .scatter-wrapper {
+    position: relative;
+    width: 100%;
+    height: 220px;
+  }
+
+  /* Tooltip-like info box */
+  .insight-box {
+    background: rgba(0,212,255,0.05);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--text-soft);
+    line-height: 1.6;
+    margin-bottom: 12px;
+  }
+
+  .insight-box strong { color: var(--accent); font-family: var(--font-mono); }
+
+  /* Scrollable table container */
+  .table-scroll {
+    overflow-x: auto;
+    max-height: 280px;
+    overflow-y: auto;
+  }
+
+  .table-scroll::-webkit-scrollbar { width: 4px; height: 4px; }
+  .table-scroll::-webkit-scrollbar-track { background: transparent; }
+  .table-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Gauge */
+  .gauge-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* Animations */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card, .kpi-card {
+    animation: fadeInUp 0.4s ease both;
+  }
+
+  /* Section dividers */
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Sparkline inline */
+  .sparkline { display: inline-block; vertical-align: middle; }
+
+  /* Number highlight */
+  .hl-blue { color: var(--accent); font-family: var(--font-mono); font-weight: 700; }
+  .hl-orange { color: var(--accent2); font-family: var(--font-mono); font-weight: 700; }
+  .hl-green { color: var(--accent4); font-family: var(--font-mono); font-weight: 700; }
+  .hl-red { color: var(--danger); font-family: var(--font-mono); font-weight: 700; }
+
+  /* Donut center text */
+  .donut-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .donut-center-val {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .donut-center-label {
+    font-size: 9px;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+  }
+
+  .donut-wrap { position: relative; }
+
+  /* Risk score */
+  .risk-score {
+    font-family: var(--font-mono);
+    font-size: 48px;
+    font-weight: 700;
+    text-align: center;
+    padding: 10px 0;
+  }
+
+  .risk-low { color: var(--accent4); }
+  .risk-med { color: var(--accent5); }
+  .risk-high { color: var(--accent2); }
+  .risk-crit { color: var(--danger); }
+
+  canvas { max-width: 100%; }
+
+  @media (max-width: 1100px) {
+    .kpi-row { grid-template-columns: repeat(3, 1fr); }
+    .grid-2, .grid-3, .grid-1-2, .grid-2-1, .grid-1-1-1-1 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo-mark">DO</div>
+    <div>
+      <div class="header h1" style="font-family:'Space Mono',monospace;font-size:14px;font-weight:700;letter-spacing:.08em">DEVOPS COMMAND CENTER</div>
+      <div class="header-subtitle">Executive Intelligence Dashboard · Q1 2025</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="filter-bar">
+      <span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono)">PERIOD:</span>
+      <div class="filter-pill">All Time</div>
+      <div class="filter-pill active">Q1 2025</div>
+      <div class="filter-pill">Q4 2024</div>
+    </div>
+    <div class="live-indicator">
+      <div class="live-dot"></div>
+      LIVE · Updated 09:41
+    </div>
+  </div>
+</header>
+
+<!-- NAV TABS -->
+<nav class="nav-tabs">
+  <div class="nav-tab active" onclick="showPage('overview')">⬡ OVERVIEW</div>
+  <div class="nav-tab" onclick="showPage('deployments')">⬢ DEPLOYMENTS</div>
+  <div class="nav-tab" onclick="showPage('incidents')">⚠ INCIDENTS</div>
+  <div class="nav-tab" onclick="showPage('impact')">⟳ DEPLOY→INCIDENT</div>
+  <div class="nav-tab" onclick="showPage('team')">◈ TEAM & TOOLS</div>
+</nav>
+
+<main class="main">
+
+<!-- =============================== OVERVIEW PAGE =============================== -->
+<div class="page active" id="page-overview">
+
+  <!-- KPI Row -->
+  <div class="kpi-row">
+    <div class="kpi-card" style="--card-color:var(--accent)">
+      <div class="kpi-label">Total Deployments</div>
+      <div class="kpi-value">1,284</div>
+      <div class="kpi-delta delta-up">↑ 18% <span style="color:var(--text-muted)">vs Q4 2024</span></div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--danger)">
+      <div class="kpi-label">Total Incidents</div>
+      <div class="kpi-value">347</div>
+      <div class="kpi-delta delta-down">↑ 9% <span style="color:var(--text-muted)">vs Q4 2024</span></div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent2)">
+      <div class="kpi-label">Incident Rate</div>
+      <div class="kpi-value">27%</div>
+      <div class="kpi-delta delta-down">↑ 3pp <span style="color:var(--text-muted)">needs attention</span></div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent4)">
+      <div class="kpi-label">Deployment Success</div>
+      <div class="kpi-value">91.4%</div>
+      <div class="kpi-delta delta-up">↑ 2.1pp <span style="color:var(--text-muted)">vs Q4 2024</span></div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent5)">
+      <div class="kpi-label">Avg Time to Restore</div>
+      <div class="kpi-value">4.2h</div>
+      <div class="kpi-delta delta-up">↓ 1.3h <span style="color:var(--text-muted)">improved</span></div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent3)">
+      <div class="kpi-label">Team Satisfaction</div>
+      <div class="kpi-value">7.6<span style="font-size:14px">/10</span></div>
+      <div class="kpi-delta delta-up">↑ 0.4 <span style="color:var(--text-muted)">survey avg</span></div>
+    </div>
+  </div>
+
+  <!-- Row 1: Deployments + Incidents over time -->
+  <div class="section-label">ACTIVITY TREND · MONTHLY</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">DEPLOYMENTS BY MONTH</div>
+          <div class="card-subtitle">All services · change types combined</div>
+        </div>
+        <span class="card-badge badge-blue">Fact_Deployment</span>
+      </div>
+      <div class="chart-container" style="height:200px">
+        <canvas id="deployMonthChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">INCIDENTS BY MONTH</div>
+          <div class="card-subtitle">Stacked by severity level</div>
+        </div>
+        <span class="card-badge badge-red">Fact_Incident</span>
+      </div>
+      <div class="chart-container" style="height:200px">
+        <canvas id="incidentMonthChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 2: Change type breakdown + Service health -->
+  <div class="section-label">SERVICE & CHANGE ANALYSIS</div>
+  <div class="grid-1-2">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">DEPLOYMENTS BY CHANGE TYPE</div>
+          <div class="card-subtitle">Dim_ChangeType distribution</div>
+        </div>
+        <span class="card-badge badge-purple">Dim_ChangeType</span>
+      </div>
+      <div class="donut-wrap" style="height:200px;position:relative">
+        <canvas id="changeTypeChart"></canvas>
+        <div class="donut-center">
+          <div class="donut-center-val">1,284</div>
+          <div class="donut-center-label">TOTAL</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">SERVICE HEALTH SCORECARD</div>
+          <div class="card-subtitle">Deployment success rate per service · Dim_Service</div>
+        </div>
+        <span class="card-badge badge-green">Dim_Service</span>
+      </div>
+      <div style="margin-top:6px">
+        <div class="meter-row">
+          <div class="meter-label">Payment API</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:96%;background:var(--accent4)"></div></div>
+          <div class="meter-value" style="color:var(--accent4)">96%</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">Auth Service</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:94%;background:var(--accent4)"></div></div>
+          <div class="meter-value" style="color:var(--accent4)">94%</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">Notification</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:91%;background:var(--accent)"></div></div>
+          <div class="meter-value" style="color:var(--accent)">91%</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">Data Pipeline</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:88%;background:var(--accent5)"></div></div>
+          <div class="meter-value" style="color:var(--accent5)">88%</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">Search Engine</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:85%;background:var(--accent5)"></div></div>
+          <div class="meter-value" style="color:var(--accent5)">85%</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">Billing Core</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:79%;background:var(--accent2)"></div></div>
+          <div class="meter-value" style="color:var(--accent2)">79%</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">Reporting Svc</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:72%;background:var(--accent2)"></div></div>
+          <div class="meter-value" style="color:var(--accent2)">72%</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">Legacy ERP</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:61%;background:var(--danger)"></div></div>
+          <div class="meter-value" style="color:var(--danger)">61%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Release Manager Perf + Severity Breakdown -->
+  <div class="section-label">RELEASE MANAGEMENT & INCIDENT SEVERITY</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">RELEASE MANAGER PERFORMANCE</div>
+          <div class="card-subtitle">Deployments led · success rate · Dim_ReleaseManager</div>
+        </div>
+        <span class="card-badge badge-blue">Dim_ReleaseManager</span>
+      </div>
+      <div class="chart-container" style="height:200px">
+        <canvas id="rmPerfChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">INCIDENT SEVERITY DISTRIBUTION</div>
+          <div class="card-subtitle">P1–P4 breakdown over Q1 · Dim_Severity</div>
+        </div>
+        <span class="card-badge badge-red">Dim_Severity</span>
+      </div>
+      <div class="chart-container" style="height:200px">
+        <canvas id="severityChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- =============================== DEPLOYMENTS PAGE =============================== -->
+<div class="page" id="page-deployments">
+
+  <div class="kpi-row" style="grid-template-columns:repeat(5,1fr)">
+    <div class="kpi-card" style="--card-color:var(--accent)">
+      <div class="kpi-label">Deployments (Q1)</div>
+      <div class="kpi-value">1,284</div>
+      <div class="kpi-delta delta-up">↑ 18% YoY</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent4)">
+      <div class="kpi-label">Successful</div>
+      <div class="kpi-value">1,174</div>
+      <div class="kpi-delta delta-up">91.4% rate</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--danger)">
+      <div class="kpi-label">Failed</div>
+      <div class="kpi-value">110</div>
+      <div class="kpi-delta delta-neutral">8.6% rate</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent5)">
+      <div class="kpi-label">Avg Deploy/Day</div>
+      <div class="kpi-value">14.3</div>
+      <div class="kpi-delta delta-up">↑ 2.1 vs Q4</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent3)">
+      <div class="kpi-label">Unique Services</div>
+      <div class="kpi-value">12</div>
+      <div class="kpi-delta delta-neutral">Active services</div>
+    </div>
+  </div>
+
+  <div class="section-label">DEPLOYMENT PIPELINE ANALYSIS</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">DAILY DEPLOYMENT VOLUME</div><div class="card-subtitle">Jan – Mar 2025 · with 7-day moving avg</div></div>
+        <span class="card-badge badge-blue">90 days</span>
+      </div>
+      <div class="chart-container" style="height:200px"><canvas id="dailyDeployChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">DEPLOYMENTS BY DAY OF WEEK</div><div class="card-subtitle">Distribution pattern · risk analysis</div></div>
+        <span class="card-badge badge-orange">Pattern</span>
+      </div>
+      <div class="chart-container" style="height:200px"><canvas id="dowChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-1-1-1-1">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">BY ENVIRONMENT</div><div class="card-subtitle">Target env breakdown</div></div>
+      </div>
+      <div class="chart-container" style="height:160px"><canvas id="envChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">BY CHANGE TYPE</div><div class="card-subtitle">Hotfix vs Release vs Patch</div></div>
+      </div>
+      <div class="chart-container" style="height:160px"><canvas id="changeTypeDonut2"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">FAILURE ROOT CAUSE</div><div class="card-subtitle">Failed deployment reasons</div></div>
+      </div>
+      <div class="chart-container" style="height:160px"><canvas id="failReasonChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">DEPLOYMENT DURATION</div><div class="card-subtitle">Avg minutes by service</div></div>
+      </div>
+      <div class="chart-container" style="height:160px"><canvas id="durationChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-label">DEPLOYMENT LOG · RECENT 20 RECORDS</div>
+  <div class="card">
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Deploy ID</th>
+            <th>Date</th>
+            <th>Service</th>
+            <th>Change Type</th>
+            <th>Release Manager</th>
+            <th>Environment</th>
+            <th>Duration</th>
+            <th>Status</th>
+            <th>Incident Triggered</th>
+          </tr>
+        </thead>
+        <tbody id="deployTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- =============================== INCIDENTS PAGE =============================== -->
+<div class="page" id="page-incidents">
+
+  <div class="kpi-row" style="grid-template-columns:repeat(6,1fr)">
+    <div class="kpi-card" style="--card-color:var(--danger)">
+      <div class="kpi-label">Total Incidents</div>
+      <div class="kpi-value">347</div>
+      <div class="kpi-delta delta-down">↑ 9% vs Q4</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--danger)">
+      <div class="kpi-label">P1 Critical</div>
+      <div class="kpi-value">23</div>
+      <div class="kpi-delta delta-down">↑ 3 vs Q4</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent2)">
+      <div class="kpi-label">P2 High</div>
+      <div class="kpi-value">78</div>
+      <div class="kpi-delta delta-neutral">Stable</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent5)">
+      <div class="kpi-label">Avg MTTR</div>
+      <div class="kpi-value">4.2h</div>
+      <div class="kpi-delta delta-up">↓ 1.3h improved</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent4)">
+      <div class="kpi-label">Resolved &lt;4h</div>
+      <div class="kpi-value">68%</div>
+      <div class="kpi-delta delta-up">↑ 11pp</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent)">
+      <div class="kpi-label">Deploy-Linked</div>
+      <div class="kpi-value">214</div>
+      <div class="kpi-delta delta-neutral">62% of total</div>
+    </div>
+  </div>
+
+  <div class="section-label">INCIDENT TRENDS & PATTERNS</div>
+  <div class="grid-2-1">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">INCIDENT TREND BY SEVERITY · WEEKLY</div><div class="card-subtitle">P1–P4 stacked area · Q1 2025</div></div>
+        <span class="card-badge badge-red">Dim_Severity</span>
+      </div>
+      <div class="chart-container" style="height:220px"><canvas id="incidentTrendChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">MTTR BY SEVERITY</div><div class="card-subtitle">Mean time to resolve (hours)</div></div>
+      </div>
+      <div style="padding:8px 0">
+        <div class="meter-row">
+          <div class="meter-label">P1 Critical</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:75%;background:var(--danger)"></div></div>
+          <div class="meter-value" style="color:var(--danger)">15.2h</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">P2 High</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:42%;background:var(--accent2)"></div></div>
+          <div class="meter-value" style="color:var(--accent2)">8.4h</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">P3 Medium</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:22%;background:var(--accent5)"></div></div>
+          <div class="meter-value" style="color:var(--accent5)">4.5h</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">P4 Low</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:10%;background:var(--accent4)"></div></div>
+          <div class="meter-value" style="color:var(--accent4)">1.9h</div>
+        </div>
+        <div style="margin-top:18px;padding-top:12px;border-top:1px solid var(--border)">
+          <div class="card-title" style="margin-bottom:8px">RESOLUTION STATUS</div>
+          <div class="meter-row">
+            <div class="meter-label">Resolved</div>
+            <div class="meter-bar"><div class="meter-fill" style="width:89%;background:var(--accent4)"></div></div>
+            <div class="meter-value" style="color:var(--accent4)">89%</div>
+          </div>
+          <div class="meter-row">
+            <div class="meter-label">In Progress</div>
+            <div class="meter-bar"><div class="meter-fill" style="width:7%;background:var(--accent5)"></div></div>
+            <div class="meter-value" style="color:var(--accent5)">7%</div>
+          </div>
+          <div class="meter-row">
+            <div class="meter-label">Escalated</div>
+            <div class="meter-bar"><div class="meter-fill" style="width:4%;background:var(--danger)"></div></div>
+            <div class="meter-value" style="color:var(--danger)">4%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">INCIDENTS BY SERVICE</div><div class="card-subtitle">Count + severity mix per service</div></div>
+        <span class="card-badge badge-orange">Dim_Service</span>
+      </div>
+      <div class="chart-container" style="height:200px"><canvas id="incidentServiceChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">INCIDENT HEATMAP · HOUR × DAY</div><div class="card-subtitle">When do incidents happen?</div></div>
+        <span class="card-badge badge-red">Pattern</span>
+      </div>
+      <div id="heatmapContainer" style="padding:4px 0"></div>
+    </div>
+  </div>
+
+  <div class="section-label">INCIDENT LOG · RECENT 20 RECORDS</div>
+  <div class="card">
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Incident ID</th>
+            <th>Date</th>
+            <th>Service</th>
+            <th>Severity</th>
+            <th>Title</th>
+            <th>Linked Deployment</th>
+            <th>Days After Deploy</th>
+            <th>MTTR</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="incidentTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- =============================== DEPLOY→INCIDENT PAGE =============================== -->
+<div class="page" id="page-impact">
+
+  <div class="insight-box">
+    <strong>KEY INSIGHT:</strong> Data shows <strong>62%</strong> of all Q1 incidents were triggered within <strong>72 hours</strong> of a deployment. 
+    Hotfix deployments carry <strong>3.4×</strong> higher incident probability than standard releases. 
+    Services with &gt;2 deployments per week show <strong>41%</strong> higher incident rates.
+  </div>
+
+  <div class="kpi-row" style="grid-template-columns:repeat(5,1fr)">
+    <div class="kpi-card" style="--card-color:var(--accent2)">
+      <div class="kpi-label">Deploy-Linked Incidents</div>
+      <div class="kpi-value">214</div>
+      <div class="kpi-delta delta-neutral">62% of all incidents</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--danger)">
+      <div class="kpi-label">Incident within 24h</div>
+      <div class="kpi-value">89</div>
+      <div class="kpi-delta delta-neutral">42% of deploy-linked</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent5)">
+      <div class="kpi-label">Incident within 72h</div>
+      <div class="kpi-value">214</div>
+      <div class="kpi-delta delta-neutral">62% of all incidents</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent)">
+      <div class="kpi-label">Hotfix Incident Rate</div>
+      <div class="kpi-value">43%</div>
+      <div class="kpi-delta delta-down">Highest risk type</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent4)">
+      <div class="kpi-label">Standard Release Rate</div>
+      <div class="kpi-value">12%</div>
+      <div class="kpi-delta delta-up">Lowest risk type</div>
+    </div>
+  </div>
+
+  <div class="section-label">DEPLOYMENT → INCIDENT CORRELATION</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">INCIDENT RATE BY CHANGE TYPE</div><div class="card-subtitle">% of deployments that triggered an incident within 72h</div></div>
+        <span class="card-badge badge-orange">Risk Analysis</span>
+      </div>
+      <div class="chart-container" style="height:220px"><canvas id="riskByChangeChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">TIME TO INCIDENT AFTER DEPLOYMENT</div><div class="card-subtitle">Histogram: hours elapsed between deploy and incident</div></div>
+        <span class="card-badge badge-red">Lag Analysis</span>
+      </div>
+      <div class="chart-container" style="height:220px"><canvas id="lagHistChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">DEPLOY VOLUME vs INCIDENT RATE · BY MONTH</div><div class="card-subtitle">Correlation between release velocity and incident load</div></div>
+      </div>
+      <div class="chart-container" style="height:220px"><canvas id="velIncidentChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">INCIDENT RISK BY SERVICE × CHANGE TYPE</div><div class="card-subtitle">Heatmap: incident rate % (darker = higher risk)</div></div>
+      </div>
+      <div id="riskHeatmap" style="padding:8px 0"></div>
+    </div>
+  </div>
+
+  <div class="section-label">DEPLOYMENT-LINKED INCIDENT LOG · TOP 20 HIGHEST IMPACT</div>
+  <div class="card">
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Incident</th>
+            <th>Severity</th>
+            <th>Linked Deploy</th>
+            <th>Change Type</th>
+            <th>Service</th>
+            <th>Release Manager</th>
+            <th>Hours After Deploy</th>
+            <th>MTTR</th>
+            <th>Business Impact</th>
+          </tr>
+        </thead>
+        <tbody id="impactTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- =============================== TEAM & TOOLS PAGE =============================== -->
+<div class="page" id="page-team">
+
+  <div class="kpi-row" style="grid-template-columns:repeat(5,1fr)">
+    <div class="kpi-card" style="--card-color:var(--accent3)">
+      <div class="kpi-label">Team Satisfaction</div>
+      <div class="kpi-value">7.6<span style="font-size:14px">/10</span></div>
+      <div class="kpi-delta delta-up">↑ 0.4 vs Q4</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent)">
+      <div class="kpi-label">Survey Respondents</div>
+      <div class="kpi-value">184</div>
+      <div class="kpi-delta delta-up">93% response rate</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent4)">
+      <div class="kpi-label">Toolchain Items</div>
+      <div class="kpi-value">34</div>
+      <div class="kpi-delta delta-neutral">Tracked tools</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent5)">
+      <div class="kpi-label">Tool Adoption</div>
+      <div class="kpi-value">78%</div>
+      <div class="kpi-delta delta-up">↑ 6pp vs Q4</div>
+    </div>
+    <div class="kpi-card" style="--card-color:var(--accent2)">
+      <div class="kpi-label">Release Managers</div>
+      <div class="kpi-value">8</div>
+      <div class="kpi-delta delta-neutral">Active in Q1</div>
+    </div>
+  </div>
+
+  <div class="section-label">TEAM SURVEY ANALYSIS · team_survey</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">SATISFACTION DIMENSIONS</div><div class="card-subtitle">Average score per survey category (1–10)</div></div>
+        <span class="card-badge badge-purple">team_survey</span>
+      </div>
+      <div class="chart-container" style="height:220px"><canvas id="surveyRadarChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">SATISFACTION TREND · QUARTERLY</div><div class="card-subtitle">Team morale index over time</div></div>
+      </div>
+      <div class="chart-container" style="height:220px"><canvas id="satisfactionTrendChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-label">TOOLCHAIN INVENTORY · toolchain_inventory</div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">TOOLCHAIN BY CATEGORY</div><div class="card-subtitle">Tool distribution across DevOps lifecycle</div></div>
+        <span class="card-badge badge-blue">toolchain_inventory</span>
+      </div>
+      <div class="chart-container" style="height:200px"><canvas id="toolchainChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div><div class="card-title">TOOL ADOPTION RATE BY TEAM</div><div class="card-subtitle">% of team actively using each tool category</div></div>
+      </div>
+      <div style="margin-top:4px">
+        <div class="meter-row">
+          <div class="meter-label">CI/CD Pipeline</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:95%;background:var(--accent4)"></div></div>
+          <div class="meter-value" style="color:var(--accent4)">95%</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">Monitoring</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:88%;background:var(--accent4)"></div></div>
+          <div class="meter-value" style="color:var(--accent4)">88%</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">Incident Mgmt</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:82%;background:var(--accent)"></div></div>
+          <div class="meter-value" style="color:var(--accent)">82%</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">Source Control</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:98%;background:var(--accent4)"></div></div>
+          <div class="meter-value" style="color:var(--accent4)">98%</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">Test Automation</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:67%;background:var(--accent5)"></div></div>
+          <div class="meter-value" style="color:var(--accent5)">67%</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">Infra as Code</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:71%;background:var(--accent5)"></div></div>
+          <div class="meter-value" style="color:var(--accent5)">71%</div>
+        </div>
+        <div class="meter-row">
+          <div class="meter-label">Security Scan</div>
+          <div class="meter-bar"><div class="meter-fill" style="width:55%;background:var(--accent2)"></div></div>
+          <div class="meter-value" style="color:var(--accent2)">55%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">RELEASE MANAGER LEADERBOARD · Dim_ReleaseManager</div>
+  <div class="card">
+    <div class="table-scroll">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Release Manager</th>
+            <th>Deployments</th>
+            <th>Success Rate</th>
+            <th>Incidents Triggered</th>
+            <th>Incident Rate</th>
+            <th>Avg MTTR</th>
+            <th>Hotfix Count</th>
+            <th>Performance</th>
+          </tr>
+        </thead>
+        <tbody id="rmTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+
+const MONTHS = ['Jan','Feb','Mar'];
+const WEEKS = ['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12','W13'];
+const SERVICES = ['Payment API','Auth Service','Notification','Data Pipeline','Search Engine','Billing Core','Reporting Svc','Legacy ERP'];
+const CHANGE_TYPES = ['Standard Release','Hotfix','Major Release','Patch','Config Change'];
+const ENVS = ['Production','Staging','UAT','Dev'];
+const SEVERITIES = ['P1 Critical','P2 High','P3 Medium','P4 Low'];
+const RELEASE_MANAGERS = ['Alex Chen','Maria Oliveira','James Park','Sophie Mueller','Raj Patel','Lena Kowalski','Tom Brady','Yuki Tanaka'];
+const TOOLS_CATEGORIES = ['CI/CD','Monitoring','Source Control','Incident Mgmt','Test Auto','Infra as Code','Security'];
+
+const deployMonthData = [378, 431, 475];
+const incidentMonthData = {
+  p1: [6, 8, 9],
+  p2: [23, 27, 28],
+  p3: [51, 68, 71],
+  p4: [22, 27, 27]
+};
+
+const changeTypeData = [512, 186, 142, 294, 150];
+const envData = [680, 312, 198, 94];
+const failReasons = ['Config Error','Dependency Fail','Timeout','Rollback','Data Migration','Unknown'];
+const failReasonData = [34, 28, 19, 15, 8, 6];
+const durationData = [12.4, 8.1, 15.6, 22.3, 9.7, 31.2, 14.8, 44.1];
+
+const rmDeployData = [198, 187, 162, 154, 141, 138, 132, 122];
+const rmSuccessRates = [94.4, 91.4, 89.5, 93.5, 88.7, 91.3, 87.1, 85.2];
+
+// Generate daily deployment data (90 days)
+function generateDailyData() {
+  const vals = [];
+  const ma = [];
+  const buf = [];
+  for (let i = 0; i < 90; i++) {
+    const dow = i % 7;
+    let base = dow === 0 || dow === 6 ? 4 : 16;
+    const v = Math.max(0, Math.round(base + (Math.random() - 0.5) * 8));
+    vals.push(v);
+    buf.push(v);
+    if (buf.length > 7) buf.shift();
+    ma.push(Math.round(buf.reduce((a,b)=>a+b,0)/buf.length*10)/10);
+  }
+  return {vals, ma};
+}
+
+const {vals: dailyVals, ma: dailyMa} = generateDailyData();
+
+function generateWeeklyIncidents() {
+  return {
+    p1: WEEKS.map(()=>Math.floor(Math.random()*3+1)),
+    p2: WEEKS.map(()=>Math.floor(Math.random()*8+3)),
+    p3: WEEKS.map(()=>Math.floor(Math.random()*12+6)),
+    p4: WEEKS.map(()=>Math.floor(Math.random()*8+2))
+  };
+}
+const weeklyInc = generateWeeklyIncidents();
+
+const DOW = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const dowData = [198, 221, 248, 234, 186, 62, 35];
+
+const incidentByService = [42, 38, 51, 67, 49, 58, 23, 19];
+
+// Heatmap data: 7 days × 8 time slots
+const heatmapDays = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const heatmapHours = ['00-03','03-06','06-09','09-12','12-15','15-18','18-21','21-24'];
+const heatmapData = heatmapDays.map(()=>heatmapHours.map(()=>Math.floor(Math.random()*20)));
+// Boost business hours
+for (let d=0;d<5;d++) for(let h=3;h<7;h++) heatmapData[d][h] += Math.floor(Math.random()*25+10);
+
+// Risk by change type
+const riskByChangeData = [12, 43, 18, 8, 21];
+
+// Lag histogram (hours to incident after deploy)
+const lagBuckets = ['0-6h','6-12h','12-24h','24-48h','48-72h','72h+'];
+const lagData = [37, 52, 40, 43, 42, 133];
+
+// Velocity vs incident
+const velData = deployMonthData;
+const incRateData = [24, 26, 31];
+
+// Risk heatmap: services × change types
+const riskHeatData = SERVICES.map(() => CHANGE_TYPES.map(() => Math.round(Math.random()*45+2)));
+// Hotfixes are higher risk
+for(let i=0;i<SERVICES.length;i++) riskHeatData[i][1] = Math.round(30+Math.random()*20);
+
+// Survey data
+const surveyDimensions = ['Deploy Process','Tooling Quality','Incident Response','On-Call Load','Team Collaboration','Documentation','Automation Level','Work-Life Balance'];
+const surveyScores = [7.8, 6.9, 7.1, 5.9, 8.4, 6.2, 7.5, 7.0];
+const satisfactionQuarters = ['Q1 24','Q2 24','Q3 24','Q4 24','Q1 25'];
+const satData = [6.4, 6.9, 7.0, 7.2, 7.6];
+
+const toolchainData = [8, 6, 4, 5, 4, 4, 3];
+
+// ─── CHARTS ─────────────────────────────────────────────────────────────────
+
+Chart.defaults.color = '#64748b';
+Chart.defaults.borderColor = '#1f2d45';
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.font.size = 11;
+
+const COLORS = {
+  blue: '#00d4ff',
+  orange: '#ff6b35',
+  green: '#10b981',
+  purple: '#7c3aed',
+  yellow: '#f59e0b',
+  red: '#ef4444',
+  teal: '#14b8a6',
+  pink: '#ec4899'
+};
+
+function alpha(hex, a) {
+  const r=parseInt(hex.slice(1,3),16), g=parseInt(hex.slice(3,5),16), b=parseInt(hex.slice(5,7),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function barChart(id, labels, data, colors, opts={}) {
+  const ctx = document.getElementById(id);
+  if(!ctx) return;
+  return new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: Array.isArray(data[0]) ? data.map((d,i)=>({
+        label: opts.labels?.[i]||'',
+        data: d,
+        backgroundColor: Array.isArray(colors)?colors[i]:colors,
+        borderRadius: 3,
+        borderSkipped: false,
+        borderWidth: 0
+      })) : [{
+        data,
+        backgroundColor: Array.isArray(colors)?colors:data.map(()=>colors||COLORS.blue),
+        borderRadius: 4,
+        borderSkipped: false,
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: !!opts.legend, labels:{color:'#94a3b8',font:{size:10}} },
+        tooltip: { backgroundColor:'#1a2236', borderColor:'#1f2d45', borderWidth:1, titleColor:'#e2e8f0', bodyColor:'#94a3b8' }
+      },
+      scales: {
+        x: {
+          stacked: !!opts.stacked,
+          grid: { color: 'rgba(31,45,69,0.6)' },
+          ticks: { color:'#64748b', font:{size:9} }
+        },
+        y: {
+          stacked: !!opts.stacked,
+          grid: { color: 'rgba(31,45,69,0.6)' },
+          ticks: { color:'#64748b', font:{size:9} },
+          beginAtZero: true,
+          ...opts.yAxis
+        },
+        ...(opts.y2 ? {y1:{type:'linear',display:true,position:'right',grid:{drawOnChartArea:false},ticks:{color:'#64748b',font:{size:9}},...opts.y2}} : {})
+      },
+      ...opts.extra
+    }
+  });
+}
+
+function donutChart(id, labels, data, colors, opts={}) {
+  const ctx = document.getElementById(id);
+  if(!ctx) return;
+  return new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: colors,
+        borderColor: '#111827',
+        borderWidth: 2,
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      cutout: opts.cutout || '65%',
+      plugins: {
+        legend: {
+          display: opts.legend !== false,
+          position: 'right',
+          labels: { color:'#94a3b8', font:{size:9}, boxWidth:10, padding:8 }
+        },
+        tooltip: { backgroundColor:'#1a2236', borderColor:'#1f2d45', borderWidth:1, titleColor:'#e2e8f0', bodyColor:'#94a3b8' }
+      }
+    }
+  });
+}
+
+function lineChart(id, labels, datasets, opts={}) {
+  const ctx = document.getElementById(id);
+  if(!ctx) return;
+  return new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { display: !!opts.legend, labels:{color:'#94a3b8',font:{size:10},boxWidth:12} },
+        tooltip: { backgroundColor:'#1a2236', borderColor:'#1f2d45', borderWidth:1, titleColor:'#e2e8f0', bodyColor:'#94a3b8' }
+      },
+      scales: {
+        x: { grid:{color:'rgba(31,45,69,0.6)'}, ticks:{color:'#64748b',font:{size:9}} },
+        y: { grid:{color:'rgba(31,45,69,0.6)'}, ticks:{color:'#64748b',font:{size:9}}, beginAtZero:true, ...opts.yAxis },
+        ...(opts.y2 ? {y1:{type:'linear',display:true,position:'right',grid:{drawOnChartArea:false},ticks:{color:'#64748b',font:{size:9}}}} : {})
+      }
+    }
+  });
+}
+
+function radarChart(id, labels, data, color) {
+  const ctx = document.getElementById(id);
+  if(!ctx) return;
+  return new Chart(ctx, {
+    type: 'radar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Score',
+        data,
+        backgroundColor: alpha(color, 0.15),
+        borderColor: color,
+        borderWidth: 2,
+        pointBackgroundColor: color,
+        pointRadius: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display:false },
+        tooltip: { backgroundColor:'#1a2236', borderColor:'#1f2d45', borderWidth:1, titleColor:'#e2e8f0', bodyColor:'#94a3b8' }
+      },
+      scales: {
+        r: {
+          min:0, max:10,
+          grid:{color:'rgba(31,45,69,0.8)'},
+          angleLines:{color:'rgba(31,45,69,0.8)'},
+          pointLabels:{color:'#94a3b8',font:{size:9}},
+          ticks:{color:'#64748b',font:{size:8},backdropColor:'transparent',stepSize:2}
+        }
+      }
+    }
+  });
+}
+
+// ─── INIT CHARTS ─────────────────────────────────────────────────────────────
+
+window.addEventListener('DOMContentLoaded', () => {
+
+  // OVERVIEW
+  barChart('deployMonthChart', MONTHS, deployMonthData, [COLORS.blue, alpha(COLORS.blue,0.75), alpha(COLORS.blue,0.5)]);
+
+  barChart('incidentMonthChart', MONTHS,
+    [incidentMonthData.p1, incidentMonthData.p2, incidentMonthData.p3, incidentMonthData.p4],
+    [COLORS.red, COLORS.orange, COLORS.yellow, COLORS.teal],
+    {stacked:true, legend:true, labels:['P1','P2','P3','P4']}
+  );
+
+  donutChart('changeTypeChart', CHANGE_TYPES, changeTypeData,
+    [COLORS.blue, COLORS.red, COLORS.purple, COLORS.green, COLORS.yellow]
+  );
+
+  barChart('rmPerfChart', RELEASE_MANAGERS.map(n=>n.split(' ')[0]),
+    [rmDeployData, rmSuccessRates.map(v=>v)],
+    [alpha(COLORS.blue,0.6), alpha(COLORS.green,0.6)],
+    {legend:true, labels:['Deployments','Success %'], y2:{min:80,max:100}}
+  );
+
+  donutChart('severityChart', SEVERITIES, [23,78,168,78],
+    [COLORS.red, COLORS.orange, COLORS.yellow, COLORS.teal]
+  );
+
+  // DEPLOYMENTS PAGE
+  const dailyLabels = Array.from({length:90},(_,i)=>{
+    const d=new Date(2025,0,1+i); return i%7===0?`${['Jan','Feb','Mar'][d.getMonth()]} ${d.getDate()}`:'';
+  });
+
+  lineChart('dailyDeployChart', dailyLabels, [
+    {
+      label: 'Deployments',
+      data: dailyVals,
+      borderColor: alpha(COLORS.blue,0.4),
+      backgroundColor: alpha(COLORS.blue,0.06),
+      fill: true,
+      borderWidth: 1,
+      pointRadius: 0,
+      tension: 0.3
+    },
+    {
+      label: '7-day MA',
+      data: dailyMa,
+      borderColor: COLORS.blue,
+      backgroundColor: 'transparent',
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.5
+    }
+  ], {legend:true});
+
+  barChart('dowChart', DOW, dowData,
+    DOW.map((_,i)=> i>=5 ? alpha(COLORS.orange,0.5) : (i===2?COLORS.blue:alpha(COLORS.blue,0.6)))
+  );
+
+  donutChart('envChart', ENVS, envData,
+    [COLORS.red, COLORS.orange, COLORS.yellow, COLORS.green],
+    {cutout:'60%', legend:true}
+  );
+
+  donutChart('changeTypeDonut2', CHANGE_TYPES, changeTypeData,
+    [COLORS.blue, COLORS.red, COLORS.purple, COLORS.green, COLORS.yellow],
+    {cutout:'60%', legend:true}
+  );
+
+  donutChart('failReasonChart', failReasons, failReasonData,
+    [COLORS.red, COLORS.orange, COLORS.yellow, COLORS.purple, COLORS.teal, COLORS.pink],
+    {cutout:'55%', legend:true}
+  );
+
+  barChart('durationChart', SERVICES.map(s=>s.split(' ')[0]),
+    durationData,
+    durationData.map(v=> v>30?COLORS.red:v>20?COLORS.orange:COLORS.green)
+  );
+
+  // Deploy table
+  const deployTableBody = document.getElementById('deployTableBody');
+  const deployStatuses = ['SUCCESS','SUCCESS','SUCCESS','FAILED','SUCCESS','SUCCESS','ROLLBACK','SUCCESS'];
+  for(let i=0;i<20;i++){
+    const svc = SERVICES[i%SERVICES.length];
+    const ct = CHANGE_TYPES[i%CHANGE_TYPES.length];
+    const rm = RELEASE_MANAGERS[i%RELEASE_MANAGERS.length];
+    const env = ENVS[i%ENVS.length];
+    const st = deployStatuses[i%deployStatuses.length];
+    const hasInc = Math.random()<0.27;
+    const dur = Math.round(8+Math.random()*40);
+    const day = Math.floor(Math.random()*89);
+    const date = new Date(2025,0,1+day);
+    const dateStr = `${date.getDate()} ${['Jan','Feb','Mar'][date.getMonth()]} 2025`;
+    const chipCls = st==='SUCCESS'?'chip-success':st==='FAILED'?'chip-danger':'chip-warning';
+    deployTableBody.innerHTML += `<tr>
+      <td class="hl-blue">D-${10000+i+1}</td>
+      <td style="color:var(--text-muted);font-family:var(--font-mono);font-size:10px">${dateStr}</td>
+      <td>${svc}</td>
+      <td><span class="chip chip-info">${ct}</span></td>
+      <td>${rm.split(' ')[0]}</td>
+      <td>${env}</td>
+      <td style="font-family:var(--font-mono)">${dur}m</td>
+      <td><span class="chip ${chipCls}"><span class="chip-dot"></span>${st}</span></td>
+      <td>${hasInc?`<span class="chip chip-danger"><span class="chip-dot"></span>I-${20000+i}</span>`:'<span style="color:var(--text-muted)">—</span>'}</td>
+    </tr>`;
+  }
+
+  // INCIDENTS PAGE
+  lineChart('incidentTrendChart', WEEKS, [
+    {label:'P1', data:weeklyInc.p1, borderColor:COLORS.red, backgroundColor:alpha(COLORS.red,0.1), fill:true, borderWidth:2, pointRadius:2, tension:0.4},
+    {label:'P2', data:weeklyInc.p2, borderColor:COLORS.orange, backgroundColor:alpha(COLORS.orange,0.08), fill:true, borderWidth:2, pointRadius:2, tension:0.4},
+    {label:'P3', data:weeklyInc.p3, borderColor:COLORS.yellow, backgroundColor:alpha(COLORS.yellow,0.06), fill:true, borderWidth:2, pointRadius:2, tension:0.4},
+    {label:'P4', data:weeklyInc.p4, borderColor:COLORS.teal, backgroundColor:alpha(COLORS.teal,0.04), fill:true, borderWidth:2, pointRadius:2, tension:0.4},
+  ], {legend:true});
+
+  barChart('incidentServiceChart', SERVICES.map(s=>s.replace(' ','\n').split(' ')[0]),
+    incidentByService,
+    incidentByService.map(v=>v>55?COLORS.red:v>45?COLORS.orange:COLORS.yellow)
+  );
+
+  // Heatmap
+  const heatmapContainer = document.getElementById('heatmapContainer');
+  const maxH = Math.max(...heatmapData.flat());
+  let hmHTML = `<div style="display:grid;grid-template-columns:50px repeat(${heatmapHours.length},1fr);gap:2px;font-size:9px;font-family:var(--font-mono)">`;
+  hmHTML += `<div></div>${heatmapHours.map(h=>`<div style="color:var(--text-muted);text-align:center;padding-bottom:3px">${h}</div>`).join('')}`;
+  heatmapDays.forEach((day,d)=>{
+    hmHTML += `<div style="color:var(--text-soft);display:flex;align-items:center;padding-right:4px">${day}</div>`;
+    heatmapData[d].forEach(v=>{
+      const intensity = v/maxH;
+      const r=Math.round(239*intensity), g=Math.round(68*intensity), b=Math.round(68*intensity);
+      const bg = v===0?'var(--surface2)':`rgba(${r},${g},${b},${0.2+intensity*0.7})`;
+      const color = intensity>0.5?'white':'var(--text-muted)';
+      hmHTML += `<div style="background:${bg};color:${color};border-radius:3px;padding:6px 2px;text-align:center;min-height:28px;display:flex;align-items:center;justify-content:center">${v||''}</div>`;
+    });
+  });
+  hmHTML += '</div>';
+  heatmapContainer.innerHTML = hmHTML;
+
+  // Incident table
+  const incidentTableBody = document.getElementById('incidentTableBody');
+  const incTitles = ['API latency spike','Auth token expiry','DB connection pool','Memory leak','Deploy rollback fail','Config drift detected','Cert expiry warning','Load balancer error','Cache invalidation','Queue overflow'];
+  for(let i=0;i<20;i++){
+    const svc = SERVICES[i%SERVICES.length];
+    const sev = SEVERITIES[i%4];
+    const day = Math.floor(Math.random()*89);
+    const date = new Date(2025,0,1+day);
+    const dateStr = `${date.getDate()} ${['Jan','Feb','Mar'][date.getMonth()]} 2025`;
+    const mttr = (1+Math.random()*20).toFixed(1);
+    const linked = Math.random()<0.62;
+    const hoursAfter = linked ? Math.round(Math.random()*72) : null;
+    const sevChip = sev==='P1 Critical'?'chip-danger':sev==='P2 High'?'chip-warning':sev==='P3 Medium'?'chip-info':'chip-success';
+    incidentTableBody.innerHTML += `<tr>
+      <td class="hl-orange">I-${20000+i+1}</td>
+      <td style="color:var(--text-muted);font-family:var(--font-mono);font-size:10px">${dateStr}</td>
+      <td>${svc}</td>
+      <td><span class="chip ${sevChip}"><span class="chip-dot"></span>${sev}</span></td>
+      <td>${incTitles[i%incTitles.length]}</td>
+      <td>${linked?`<span class="hl-blue">D-${10000+Math.floor(Math.random()*20)+1}</span>`:'<span style="color:var(--text-muted)">—</span>'}</td>
+      <td style="font-family:var(--font-mono)">${linked?`<span style="color:var(--accent2)">${hoursAfter}h</span>`:'—'}</td>
+      <td style="font-family:var(--font-mono)">${mttr}h</td>
+      <td><span class="chip chip-success"><span class="chip-dot"></span>RESOLVED</span></td>
+    </tr>`;
+  }
+
+  // IMPACT PAGE
+  barChart('riskByChangeChart', CHANGE_TYPES, riskByChangeData,
+    riskByChangeData.map(v=>v>35?COLORS.red:v>20?COLORS.orange:COLORS.green)
+  );
+
+  barChart('lagHistChart', lagBuckets, lagData,
+    lagData.map((_,i)=>i<2?COLORS.red:i<3?COLORS.orange:i<5?COLORS.yellow:alpha(COLORS.teal,0.5))
+  );
+
+  lineChart('velIncidentChart', MONTHS, [
+    {label:'Deploy Volume', data:deployMonthData, borderColor:COLORS.blue, backgroundColor:alpha(COLORS.blue,0.08), fill:true, borderWidth:2, pointRadius:4, tension:0.4, yAxisID:'y'},
+    {label:'Incident Rate %', data:incRateData, borderColor:COLORS.orange, backgroundColor:'transparent', borderWidth:2, pointRadius:4, tension:0.4, yAxisID:'y1', borderDash:[4,4]}
+  ], {legend:true, y2:{min:15,max:40}});
+
+  // Risk heatmap
+  const riskHeatmapEl = document.getElementById('riskHeatmap');
+  const maxR = 60;
+  let rhHTML = `<div style="overflow-x:auto"><div style="display:grid;grid-template-columns:100px repeat(${CHANGE_TYPES.length},1fr);gap:2px;font-size:9px;font-family:var(--font-mono);min-width:500px">`;
+  rhHTML += `<div></div>${CHANGE_TYPES.map(ct=>`<div style="color:var(--text-muted);text-align:center;padding:0 2px 4px;font-size:8px">${ct.replace(' ','\n')}</div>`).join('')}`;
+  SERVICES.forEach((svc,s)=>{
+    rhHTML += `<div style="color:var(--text-soft);display:flex;align-items:center;font-size:9px;padding-right:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${svc.split(' ')[0]}</div>`;
+    riskHeatData[s].forEach(v=>{
+      const intensity = v/maxR;
+      const r=Math.round(239*intensity), g=Math.round(68*(1-intensity)), b=Math.round(68*(1-intensity));
+      const bg = `rgba(${r+100*(1-intensity)},${g+50*(1-intensity)},${b},${0.15+intensity*0.75})`;
+      const color = intensity>0.5?'white':'var(--text-soft)';
+      rhHTML += `<div style="background:${bg};color:${color};border-radius:3px;padding:7px 2px;text-align:center;font-size:9px;font-weight:700">${v}%</div>`;
+    });
+  });
+  rhHTML += '</div></div>';
+  riskHeatmapEl.innerHTML = rhHTML;
+
+  // Impact table
+  const impactTableBody = document.getElementById('impactTableBody');
+  const impacts = ['Revenue loss $12k/h','SLA breach','Customer churn risk','Data integrity risk','Critical path blocked','Compliance alert','Executive escalation'];
+  for(let i=0;i<20;i++){
+    const svc = SERVICES[i%SERVICES.length];
+    const sev = SEVERITIES[i%4];
+    const ct = CHANGE_TYPES[i%CHANGE_TYPES.length];
+    const rm = RELEASE_MANAGERS[i%RELEASE_MANAGERS.length];
+    const hours = Math.round(Math.random()*72+1);
+    const mttr = (1+Math.random()*20).toFixed(1);
+    const sevChip = sev==='P1 Critical'?'chip-danger':sev==='P2 High'?'chip-warning':sev==='P3 Medium'?'chip-info':'chip-success';
+    impactTableBody.innerHTML += `<tr>
+      <td class="hl-orange">I-${20000+i+1}</td>
+      <td><span class="chip ${sevChip}"><span class="chip-dot"></span>${sev}</span></td>
+      <td class="hl-blue">D-${10000+i+1}</td>
+      <td><span class="chip chip-info">${ct}</span></td>
+      <td>${svc}</td>
+      <td>${rm.split(' ')[0]}</td>
+      <td style="font-family:var(--font-mono);color:${hours<24?'var(--danger)':hours<48?'var(--accent2)':'var(--text-muted)'}">${hours}h</td>
+      <td style="font-family:var(--font-mono)">${mttr}h</td>
+      <td style="font-size:10px;color:var(--text-muted)">${impacts[i%impacts.length]}</td>
+    </tr>`;
+  }
+
+  // TEAM PAGE
+  radarChart('surveyRadarChart', surveyDimensions, surveyScores, COLORS.purple);
+
+  lineChart('satisfactionTrendChart', satisfactionQuarters, [
+    {label:'Team Satisfaction', data:satData, borderColor:COLORS.purple, backgroundColor:alpha(COLORS.purple,0.12), fill:true, borderWidth:2, pointRadius:5, pointBackgroundColor:COLORS.purple, tension:0.4}
+  ], {yAxis:{min:4,max:10}});
+
+  donutChart('toolchainChart', TOOLS_CATEGORIES, toolchainData,
+    [COLORS.blue, COLORS.green, COLORS.orange, COLORS.red, COLORS.yellow, COLORS.teal, COLORS.purple]
+  );
+
+  // RM table
+  const rmTableBody = document.getElementById('rmTableBody');
+  RELEASE_MANAGERS.forEach((rm, i) => {
+    const deploys = rmDeployData[i];
+    const successRate = rmSuccessRates[i];
+    const incRate = (8+Math.random()*35).toFixed(1);
+    const mttr = (2+Math.random()*8).toFixed(1);
+    const hotfixes = Math.round(5+Math.random()*30);
+    const incidents = Math.round(deploys * parseFloat(incRate)/100);
+    const perf = successRate>=93?'EXCELLENT':successRate>=90?'GOOD':successRate>=87?'AVERAGE':'NEEDS ATTN';
+    const perfChip = successRate>=93?'chip-success':successRate>=90?'chip-info':successRate>=87?'chip-warning':'chip-danger';
+    rmTableBody.innerHTML += `<tr>
+      <td style="font-family:var(--font-mono);color:var(--text-muted)">${i+1}</td>
+      <td style="font-weight:500;color:var(--text)">${rm}</td>
+      <td style="font-family:var(--font-mono)">${deploys}</td>
+      <td><span style="color:${successRate>=93?'var(--accent4)':successRate>=90?'var(--accent)':'var(--accent2)'};font-family:var(--font-mono);font-weight:700">${successRate}%</span></td>
+      <td style="font-family:var(--font-mono);color:var(--text-muted)">${incidents}</td>
+      <td style="font-family:var(--font-mono);color:${parseFloat(incRate)>25?'var(--danger)':parseFloat(incRate)>15?'var(--accent2)':'var(--accent4)'}">${incRate}%</td>
+      <td style="font-family:var(--font-mono)">${mttr}h</td>
+      <td style="font-family:var(--font-mono)">${hotfixes}</td>
+      <td><span class="chip ${perfChip}"><span class="chip-dot"></span>${perf}</span></td>
+    </tr>`;
+  });
+
+});
+
+// ─── PAGE NAV ─────────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+</script>
+</body>
+</html>
